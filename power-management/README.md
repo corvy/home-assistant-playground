@@ -21,5 +21,5 @@
 
 ## Demo Video
 
-[![Short Demo Video](https://img.youtube.com/vi/dDY8LkLwdokkjMZO/0.jpg)](https://youtube.com/shorts/IpP1BEV9HX8?si=dDY8LkLwdokkjMZO)
+[![Short Demo Video](https://img.youtube.com/vi/UJFDQVPTyuE/0.jpg)](https://youtube.com/shorts/UJFDQVPTyuE)
 
