@@ -18,3 +18,8 @@
  - Include Grid Cost - input_boolean.include_grid
  - Include VAT - input_boolean.include_vat
  - VAT Percent - input_number.vat_percent
+
+## Demo Video
+
+[![Short Demo Video](https://img.youtube.com/vi/dDY8LkLwdokkjMZO/0.jpg)](https://youtube.com/shorts/IpP1BEV9HX8?si=dDY8LkLwdokkjMZO)
+
