@@ -1,0 +1,211 @@
+views:
+  - title: Home
+    cards: []
+    type: sections
+    sections:
+      - type: grid
+        cards:
+          - type: custom:mushroom-chips-card
+            chips:
+              - type: entity
+                entity: person.stian_b_barmen
+                name: Innstillinger
+                icon: mdi:cog
+                icon_color: grey
+                use_entity_picture: false
+                content_info: none
+                tap_action:
+                  action: navigate
+                  navigation_path: '#electricity_settings'
+                hold_action:
+                  action: navigate
+                  navigation_path: '#electricity_settings'
+                double_tap_action:
+                  action: navigate
+                  navigation_path: '#electricity_settings'
+            alignment: end
+            grid_options:
+              columns: 12
+              rows: auto
+          - type: custom:config-template-card
+            variables:
+              sensor_price: '"sensor.nordpool_calculated_price"'
+              sensor_usage: '"sensor.accumulated_consumption_current_hour_rykkinnveien_67"'
+              low_price: states['sensor.nordpool_calculated_price'].attributes.min
+              high_price: states['sensor.nordpool_calculated_price'].attributes.max
+              mean_price: states['sensor.nordpool_calculated_price'].attributes.mean
+              current_price: states['sensor.nordpool_calculated_price'].state
+              state_color: |
+                (low, high, current) => {
+                  const range = high - low;
+                  const third_low = low + range / 3;
+                  const third_high = high - range / 3;
+
+                  if (current <= third_low) {
+                    return '#42a047';  // Grønn
+                  } else if (current <= third_high) {
+                    return '#ffa600';  // Oransje
+                  } else {
+                    return '#db4437';  // Rød
+                  }
+                }
+            entities:
+              - ${sensor_price}
+            card:
+              type: custom:apexcharts-card
+              experimental:
+                color_threshold: true
+              header:
+                show: true
+                title: Strømpris og Forbruk
+                show_states: true
+                standard_format: true
+                colorize_states: true
+              now:
+                show: true
+                label: Nå
+              graph_span: 2d
+              span:
+                start: day
+              apex_config:
+                dataLabels:
+                  enabled: true
+                legend:
+                  show: true
+                chart:
+                  height: 210px
+                yaxis:
+                  - id: price
+                    show: true
+                    decimalsInFloat: 0
+                    floating: false
+                    forceNiceScale: true
+                    extend_to: end
+                  - id: usage
+                    show: true
+                    opposite: true
+                    decimalsInFloat: 0
+                    floating: false
+                    forceNiceScale: true
+                    extend_to: end
+              series:
+                - entity: ${sensor_price}
+                  yaxis_id: price
+                  extend_to: now
+                  name: Pris
+                  unit: ' øre/kWh'
+                  stroke_width: 1
+                  type: area
+                  curve: stepline
+                  float_precision: 0
+                  color: ${state_color(low_price, high_price, current_price)}
+                  color_threshold:
+                    - value: ${low_price}
+                      color: '#42a047'
+                    - value: ${mean_price}
+                      color: '#ffa600'
+                    - value: ${high_price}
+                      color: '#db4437'
+                  show:
+                    legend_value: false
+                    in_header: before_now
+                  data_generator: >
+                    return (entity.attributes.raw_today.map((start, index) => {
+                    return [new Date(start["start"]).getTime(),
+                    entity.attributes.raw_today[index]["value"]];
+                    })).concat(entity.attributes.raw_tomorrow.map((start, index)
+                    => { return [new Date(start["start"]).getTime(),
+                    entity.attributes.raw_tomorrow[index]["value"]]; }));
+                - entity: ${sensor_usage}
+                  yaxis_id: usage
+                  type: column
+                  name: Forbruk
+                  stroke_width: 2
+                  invert: false
+                  group_by:
+                    func: max
+                  show:
+                    legend_value: false
+          - type: custom:mushroom-entity-card
+            entity: input_boolean.include_grid
+            icon_color: orange
+            tap_action:
+              action: toggle
+            secondary_info: none
+            name: Nettleie
+            grid_options:
+              columns: 3
+              rows: 2
+            layout: vertical
+          - type: tile
+            entity: input_boolean.include_el_company
+            name: Strømselskap
+            tap_action:
+              action: toggle
+            vertical: true
+            hide_state: true
+            grid_options:
+              columns: 3
+              rows: 2
+          - type: custom:mushroom-entity-card
+            entity: input_boolean.include_government_support
+            fill_container: false
+            tap_action:
+              action: toggle
+            secondary_info: none
+            grid_options:
+              columns: 3
+              rows: 2
+            layout: vertical
+            name: Strømstøtte
+          - type: tile
+            entity: input_boolean.include_vat
+            name: Moms
+            tap_action:
+              action: toggle
+            grid_options:
+              columns: 3
+              rows: 2
+            vertical: true
+            hide_state: true
+      - type: grid
+        cards:
+          - type: heading
+            heading: New section
+          - type: vertical-stack
+            cards:
+              - type: custom:bubble-card
+                card_type: pop-up
+                hash: '#electricity_settings'
+                name: Strøminnstillinger
+                icon: mdi:sofa-outline
+              - type: custom:mushroom-title-card
+                title: Oppsett for strøm
+                subtitle: >-
+                  Sett inn verdier for kalkulering av total pris for strøm. Alle
+                  verdier skal være uten moms (MVA). Moms regnes ut til slutt. 
+              - type: horizontal-stack
+                cards:
+                  - type: custom:mushroom-entity-card
+                    entity: sensor.nordpool_kwh_no1_nok_3_10_0
+                  - type: custom:mushroom-entity-card
+                    entity: sensor.nordpool_calculated_price
+              - type: horizontal-stack
+                cards:
+                  - type: custom:mushroom-entity-card
+                    entity: input_number.grid_day_hourly_cost
+                  - type: custom:mushroom-entity-card
+                    entity: input_number.grid_night_hourly_cost
+              - type: horizontal-stack
+                cards:
+                  - type: custom:mushroom-entity-card
+                    entity: input_number.el_company_surcharge
+                  - type: custom:mushroom-entity-card
+                    entity: input_number.electricity_government_support_threshold
+              - type: horizontal-stack
+                cards:
+                  - type: custom:mushroom-entity-card
+                    entity: input_number.electricity_government_support_percentage
+                  - type: custom:mushroom-entity-card
+                    entity: input_number.vat_percent
+    max_columns: 1

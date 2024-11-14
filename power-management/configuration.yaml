@@ -1,0 +1,156 @@
+template:
+  - sensor:
+      - name: "Totalpris inkludert grid, el_company og Strømstøtte"
+        unit_of_measurement: "Øre/kWh"
+        unique_id: nordpool_calculated_price
+        state: >
+          {% set current_time = now() %}
+          {% set grid_day_cost = states('input_number.grid_day_hourly_cost') | float(0) %}
+          {% set grid_night_cost = states('input_number.grid_night_hourly_cost') | float(0) %}
+          {% set el_company_surcharge = states('input_number.el_company_surcharge') | float(0) %}
+          {% set government_support_percentage = states('input_number.electricity_government_support_percentage') | float(0) %}
+          {% set government_support_threshold = states('input_number.electricity_government_support_threshold') | float(0) %}
+          {% set is_workday = is_state('binary_sensor.arbeidsdag_sensor', 'on') %}
+          {% set include_government_support = is_state('input_boolean.include_government_support', 'on') %}
+          {% set include_grid = is_state('input_boolean.include_grid', 'on') %}
+          {% set include_el_company = is_state('input_boolean.include_el_company', 'on') %}
+          {% set include_vat = is_state('input_boolean.include_vat', 'on') %}
+          {% set vat_percent = states('input_number.vat_percent') | float(0) / 100 %}
+
+          {% set current_price = namespace(value=0) %}
+
+          {% for period in state_attr('sensor.nordpool_kwh_no1_nok_3_10_0', 'raw_today') %}
+            {% set start = as_timestamp(period.start) %}
+            {% set end = as_timestamp(period.end) %}
+            {% if start <= as_timestamp(current_time) < end %}
+              {% set is_day = is_workday and (6 <= (start | timestamp_custom('%H', True) | int) < 22) %}
+              {% set grid_cost = grid_day_cost if is_day else grid_night_cost %}
+              {% set nordpool_price = period.value %}
+              {% set support = ((nordpool_price - government_support_threshold) * (government_support_percentage / 100)) if include_government_support and nordpool_price > government_support_threshold else 0 %}
+              {% set total_price = (nordpool_price - support + (grid_cost if include_grid else 0) + (el_company_surcharge if include_el_company else 0)) | round(2) %}
+              {% set current_price.value = (total_price) * (1 + vat_percent) if include_vat else total_price  %}
+            {% endif %}
+          {% endfor %}
+
+          {{ current_price.value }}
+        attributes:
+          raw_today: >
+            [
+            {% set grid_day_cost = states('input_number.grid_day_hourly_cost') | float(0) %}
+            {% set grid_night_cost = states('input_number.grid_night_hourly_cost') | float(0) %}
+            {% set el_company_surcharge = states('input_number.el_company_surcharge') | float(0) %}
+            {% set government_support_percentage = states('input_number.electricity_government_support_percentage') | float(0) %}
+            {% set government_support_threshold = states('input_number.electricity_government_support_threshold') | float(0) %}
+            {% set is_workday = is_state('binary_sensor.arbeidsdag_sensor', 'on') %}
+            {% set include_government_support = is_state('input_boolean.include_government_support', 'on') %}
+            {% set include_grid = is_state('input_boolean.include_grid', 'on') %}
+            {% set include_el_company = is_state('input_boolean.include_el_company', 'on') %}
+            {% set include_vat = is_state('input_boolean.include_vat', 'on') %}
+            {% set vat_percent = states('input_number.vat_percent') | float(0) / 100 %}
+              
+            {% for period in state_attr('sensor.nordpool_kwh_no1_nok_3_10_0', 'raw_today') %}
+              {% set start_time = as_timestamp(period.start) | timestamp_custom('%H', True) | int %}
+              {% set is_day = is_workday and (6 <= start_time < 22) %}
+              {% set grid_cost = grid_day_cost if is_day else grid_night_cost %}
+              {% set nordpool_price = period.value %}
+              {% set support = ((nordpool_price - government_support_threshold) * (government_support_percentage / 100)) if include_government_support and nordpool_price > government_support_threshold else 0 %}
+              {% set total_price = (nordpool_price - support + (grid_cost if include_grid else 0) + (el_company_surcharge if include_el_company else 0)) | round(2) %}
+              {% set total_price = (total_price) * (1 + vat_percent) if include_vat else total_price  %}
+              {
+                "start": "{{ period.start }}",
+                "end": "{{ period.end }}",
+                "value": {{ total_price }}
+              }{% if not loop.last %}, {% endif %}
+            {% endfor %}
+            ]
+          raw_tomorrow: >
+            [
+            {% set grid_day_cost = states('input_number.grid_day_hourly_cost') | float(0) %}
+            {% set grid_night_cost = states('input_number.grid_night_hourly_cost') | float(0) %}
+            {% set el_company_surcharge = states('input_number.el_company_surcharge') | float(0) %}
+            {% set government_support_percentage = states('input_number.electricity_government_support_percentage') | float(0) %}
+            {% set government_support_threshold = states('input_number.electricity_government_support_threshold') | float(0) %}
+            {% set is_workday = is_state('binary_sensor.arbeidsdag_i_morgen', 'on') %}
+            {% set include_government_support = is_state('input_boolean.include_government_support', 'on') %}
+            {% set include_grid = is_state('input_boolean.include_grid', 'on') %}
+            {% set include_el_company = is_state('input_boolean.include_el_company', 'on') %}
+            {% set include_vat = is_state('input_boolean.include_vat', 'on') %}
+            {% set vat_percent = states('input_number.vat_percent') | float(0) / 100 %}
+
+            {% for period in state_attr('sensor.nordpool_kwh_no1_nok_3_10_0', 'raw_tomorrow') %}
+              {% set start_time = as_timestamp(period.start) | timestamp_custom('%H', True) | int %}
+              {% set is_day = is_workday and (6 <= start_time < 22) %}
+              {% set grid_cost = grid_day_cost if is_day else grid_night_cost %}
+              {% set nordpool_price = period.value %}
+              {% set support = ((nordpool_price - government_support_threshold) * (government_support_percentage / 100)) if include_government_support and nordpool_price > government_support_threshold else 0 %}
+              {% set total_price = (nordpool_price - support + (grid_cost if include_grid else 0) + (el_company_surcharge if include_el_company else 0)) %}
+              {% set total_price = total_price * (1 + vat_percent) if include_vat else total_price | round(2) %}
+              {
+                "start": "{{ period.start }}",
+                "end": "{{ period.end }}",
+                "value": {{ total_price }}
+              }{% if not loop.last %}, {% endif %}
+            {% endfor %}
+            ]
+          min: >
+            {% set nordpool_min = state_attr('sensor.nordpool_kwh_no1_nok_3_10_0', 'min') | float %}
+            {% set grid_day_cost = states('input_number.grid_day_hourly_cost') | float(0) %}
+            {% set grid_night_cost = states('input_number.grid_night_hourly_cost') | float(0) %}
+            {% set el_company_surcharge = states('input_number.el_company_surcharge') | float(0) %}
+            {% set government_support_percentage = states('input_number.electricity_government_support_percentage') | float(0) %}
+            {% set government_support_threshold = states('input_number.electricity_government_support_threshold') | float(0) %}
+            {% set include_government_support = is_state('input_boolean.include_government_support', 'on') %}
+            {% set include_grid = is_state('input_boolean.include_grid', 'on') %}
+            {% set include_el_company = is_state('input_boolean.include_el_company', 'on') %}
+            {% set include_vat = is_state('input_boolean.include_vat', 'on') %}
+            {% set vat_percent = states('input_number.vat_percent') | float(0) / 100 %}
+
+            {% set support = ((nordpool_min - government_support_threshold) * (government_support_percentage / 100)) if include_government_support and nordpool_min > government_support_threshold else 0 %}
+            {% set total_price = (nordpool_min - support + (grid_day_cost if include_grid else 0) + (el_company_surcharge if include_el_company else 0)) %}
+            {% set total_price = total_price * (1 + vat_percent) if include_vat else total_price | round(2) %}
+
+            {{ total_price | round(2) }}
+          max: >
+            {% set nordpool_max = state_attr('sensor.nordpool_kwh_no1_nok_3_10_0', 'max') | float %}
+            {% set grid_day_cost = states('input_number.grid_day_hourly_cost') | float(0) %}
+            {% set grid_night_cost = states('input_number.grid_night_hourly_cost') | float(0) %}
+            {% set el_company_surcharge = states('input_number.el_company_surcharge') | float(0) %}
+            {% set government_support_percentage = states('input_number.electricity_government_support_percentage') | float(0) %}
+            {% set government_support_threshold = states('input_number.electricity_government_support_threshold') | float(0) %}
+            {% set include_government_support = is_state('input_boolean.include_government_support', 'on') %}
+            {% set include_grid = is_state('input_boolean.include_grid', 'on') %}
+            {% set include_el_company = is_state('input_boolean.include_el_company', 'on') %}
+            {% set include_vat = is_state('input_boolean.include_vat', 'on') %}
+            {% set vat_percent = states('input_number.vat_percent') | float(0) / 100 %}
+
+            {% set support = ((nordpool_max - government_support_threshold) * (government_support_percentage / 100)) if include_government_support and nordpool_max > government_support_threshold else 0 %}
+            {% set total_price = (nordpool_max - support + (grid_day_cost if include_grid else 0) + (el_company_surcharge if include_el_company else 0)) %}
+            {% set total_price = total_price * (1 + vat_percent) if include_vat else total_price | round(2) %}
+
+            {{ total_price | round(2) }}
+          mean: >
+            {% set nordpool_mean = state_attr('sensor.nordpool_kwh_no1_nok_3_10_0', 'mean') | float %}
+            {% set grid_day_cost = states('input_number.grid_day_hourly_cost') | float(0) %}
+            {% set grid_night_cost = states('input_number.grid_night_hourly_cost') | float(0) %}
+            {% set el_company_surcharge = states('input_number.el_company_surcharge') | float(0) %}
+            {% set government_support_percentage = states('input_number.electricity_government_support_percentage') | float(0) %}
+            {% set government_support_threshold = states('input_number.electricity_government_support_threshold') | float(0) %}
+            {% set include_government_support = is_state('input_boolean.include_government_support', 'on') %}
+            {% set include_grid = is_state('input_boolean.include_grid', 'on') %}
+            {% set include_el_company = is_state('input_boolean.include_el_company', 'on') %}
+            {% set include_vat = is_state('input_boolean.include_vat', 'on') %}
+            {% set vat_percent = states('input_number.vat_percent') | float(0) / 100 %}
+
+            {% set support = ((nordpool_mean - government_support_threshold) * (government_support_percentage / 100)) if include_government_support and nordpool_mean > government_support_threshold else 0 %}
+            {% set total_price = (nordpool_mean - support + (grid_day_cost if include_grid else 0) + (el_company_surcharge if include_el_company else 0)) %}
+            {% set total_price = total_price * (1 + vat_percent) if include_vat else total_price | round(2) %}
+
+            {{ total_price | round(2) }}
+          grid_day_cost: "{{ states('input_number.grid_day_hourly_cost') }}"
+          grid_night_cost: "{{ states('input_number.grid_night_hourly_cost') }}"
+          el_company_surcharge: "{{ states('input_number.el_company_surcharge') }}"
+          government_support_percentage: "{{ states('input_number.electricity_government_support_percentage') }}"
+          government_support_threshold: "{{ states('input_number.electricity_government_support_threshold') }}"
+          include_government_support: "{{ is_state('input_boolean.include_government_support', 'on') }}"
+          include_grid: "{{ is_state('input_boolean.include_grid', 'on') }}"
+          include_vat: "{{ is_state('input_boolean.include_vat', 'on') }}"
